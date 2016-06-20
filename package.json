@@ -1,0 +1,37 @@
+{
+  "name": "aimee-view",
+  "version": "1.0.1",
+  "description": "预览aimee.app，帮助快速创建aimee.app",
+  "main": "app.js",
+  "bin": {
+    "av": "./bin/aimeeview",
+    "aimeev": "./bin/aimeeview",
+    "aimeeview": "./bin/aimeeview"
+  },
+  "scripts": {
+    "test": "node test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gavinning/aimee-view.git"
+  },
+  "keywords": [
+    "aimee-view",
+    "aimee",
+    "aimeejs"
+  ],
+  "author": "gavinning",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/gavinning/aimee-view/issues"
+  },
+  "homepage": "https://github.com/gavinning/aimee-view#readme",
+  "dependencies": {
+    "aimee-is": "^1.1.0",
+    "aimee-cli": "^1.4.0",
+    "colorful": "^2.1.0",
+    "commander": "^2.9.0",
+    "fs-extra": "^0.30.0",
+    "gaze": "^1.0.0"
+  }
+}
