@@ -10,18 +10,27 @@ npm i aimee-view -g
 ```sh
 $ av -h
 
-  Usage: av [options]
+  Usage: av [options] [command]
+
+  Commands:
+
+    clean   clean project cache
 
   Options:
 
     -h, --help     output usage information
     -V, --version  output the version number
     -w, --watch    monitor the changes of app
+    -c, --clean    clean compile cache
+    -o, --open     open server url
     -L, --live     automatically reload your browser
 ```
 
 ### Example
 ```sh
+
+#清空临时项目缓存
+$ av clean
 
 # 编译app
 $ av app
@@ -31,6 +40,9 @@ $ av -w app
 
 # 监听app修改，自动编译并刷新浏览器
 $ av -wL app
+
+# --clean 清空编译缓存
+$ av -wLc app
 ```
 
 

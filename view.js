@@ -20,7 +20,8 @@ function createProject(){
 // 修改home.page调用
 // home.js => this.exports(app.name)
 // home.jade => #lincoapp-id-#{app.name}
-function fixPage(app){
+function fixPage(apps){
+    var app = apps[0];
     return new Promise(function(res, rej){
         fixFile(app, 'home.js', /exports\(\'(.+)\'\)$/mig);
         fixFile(app, 'home.jade', /lincoapp\-id\-(.+)$/mig);
@@ -38,32 +39,39 @@ function fixPage(app){
 }
 
 // Copy到临时项目目录下
-function copyApp(app){
-    return new Promise(function(res, rej){
-        fs.copy(app.path, path.join(widget, app.name), function(err, msg){
-            err ? rej(err) : res(msg)
-        });
-    })
+function copyApp(apps){
+    return Promise.all(apps.map((app) => {
+        return new Promise(function(res, rej){
+            fs.copy(app.path, path.join(widget, app.name), function(err, msg){
+                err ? rej(err) : res(msg)
+            })
+        })
+    }))
 }
 
 // 执行项目构建
-function compile(app){
-    var w, l;
-    app.args.live ? l = '-L ' : l = '';
-    app.args.watch ? w = '-w ' : w = '';
+function compile(args){
     return new Promise(function(res, rej){
-        exec('uz release '+ w + l +'--root ' + project.path, function(err, msg){
+        exec(`uz release ${mapArgs(args)} --root ${project.path}`, function(err, msg){
             err ? rej(err) : res(msg)
             console.log(msg)
-            if(!l && !w){
+            if(!args.live && !args.watch){
                 process.exit(1)
             }
         })
     })
+    function mapArgs(args){
+        var arr = [];
+        args.live ? arr.push('L') : arr;
+        args.watch ? arr.push('w') : arr;
+        args.clean ? arr.push('c') : arr;
+        arr.length > 0 ? arr.unshift('-') : [];
+        return arr.join('');
+    }
 }
 
-function openURL(app){
-    if(app.args.o || app.args.open ){
+function openURL(args){
+    if(args.o || args.open ){
         exec('open http://127.0.0.1:8080', function(err, msg){
             err ?
                 console.log(err):
@@ -73,11 +81,11 @@ function openURL(app){
 }
 
 // 完整流程
-function all(app, file){
+function all(apps, args){
     createProject()
-        .then(fixPage(app))
-        .then(copyApp(app))
-        .then(compile(app))
+        .then(fixPage(apps))
+        .then(copyApp(apps))
+        .then(compile(args))
         .catch(function(){
             console.log(arguments, 'aimeeview|view|58')
         })
@@ -86,22 +94,46 @@ function all(app, file){
 // 获取app相关信息
 function getApp(commander){
     var app = {};
-    app.name = commander.args[0] || '';
-    if(app.name === '.'){
-        app.path = process.cwd();
-        app.name = path.basename(app.path);
-        app.dirname = path.dirname(app.path);
+    var apps = [];
+
+    if(commander.args.length){
+        commander.args.forEach((arg) => {
+            app = {};
+            app.name = arg;
+            if(app.name === '.'){
+                app.path = process.cwd();
+                app.name = path.basename(app.path);
+                app.dirname = path.dirname(app.path);
+            }
+            else{
+                app.path = path.join(process.cwd(), app.name);
+                app.dirname = path.dirname(app.path);
+            }
+            apps.push(app)
+        })
     }
-    else{
-        app.path = path.join(process.cwd(), app.name);
-        app.dirname = path.dirname(app.path);
-    }
-    app.args = {
+    return apps;
+}
+
+// 获取命令行参数
+function getArgs(commander){
+    return {
         open: commander.open || false,
         live: commander.live || false,
-        watch: commander.watch || false
+        watch: commander.watch || false,
+        clean: commander.clean || false
     }
-    return app;
+}
+
+// 获取gaze对象
+function getGaze(apps){
+    return apps.length === 1 ?
+        new Gaze('**/*', {'mode': 'poll', cwd: apps[0].path}):
+        new Gaze(`{${apps.map(
+            (app) => {
+                return app.name
+            }
+        ).join(',')}}/**`, {'mode': 'poll', cwd: apps[0].dirname});
 }
 
 // 日志时间
@@ -110,32 +142,28 @@ function logDate(){
 }
 
 module.exports = function(commander){
-    var app = getApp(commander);
-    var gaze = new Gaze('**/*', {'mode': 'poll', cwd: app.path});
+    var apps = getApp(commander);
+    var args = getArgs(commander);
+    var gaze = getGaze(apps);
 
-    if(app.name){
-        // 创建临时项目路径
-        fs.mkdirpSync(rcpath);
-        // 是否监听
-        if(commander.watch){
-            gaze.on('ready', function(){
-                all(app);
-                console.log(color.green('Watching'), color.cyan(app.name));
-            })
-            gaze.on('all', function(ev, filepath){
-                var file = {
-                    path: filepath,
-                    name: path.join(app.name, path.basename(filepath))
-                };
-                copyApp(file);
-                console.log(color.gray(logDate()), file.name, color.green(ev));
-            })
-        }
-        else{
-            all(app)
-        }
+    // 创建临时项目路径
+    fs.mkdirpSync(rcpath);
+
+    if(args.watch){
+        gaze.on('ready', function(){
+            all(apps, args);
+            console.log(color.green('Watching'), apps.map((app) => {return color.cyan(app.name)}).join(' '));
+        })
+        gaze.on('all', function(ev, filepath){
+            var file = {
+                path: filepath,
+                name: path.join(app.name, path.basename(filepath))
+            };
+            copyApp(file);
+            console.log(color.gray(logDate()), file.name, color.green(ev));
+        })
     }
     else{
-        console.log('Need appname.')
+        all(apps, args)
     }
 }
