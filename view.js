@@ -1,12 +1,13 @@
 var fs = require('fs-extra');
 var path = require('path');
-var Gaze = require('gaze').Gaze;
+var globule = require('globule');
 var color = require('colorful');
 var aimee = require('aimee-cli');
+var Gaze = require('gaze').Gaze;
+var exec = require('child_process').exec;
 var project = { name: 'www' };
 var rcpath = path.join(process.env.HOME, '.aimee-view');
 var widget = path.join(rcpath, project.name, 'src/widget');
-var exec = require('child_process').exec;
 
 project.path = path.join(rcpath, project.name);
 
@@ -40,9 +41,26 @@ function fixPage(apps){
 
 // Copy到临时项目目录下
 function copyApp(apps){
-    return Promise.all(apps.map((app) => {
+    var files = [];
+    apps.forEach((app) => {
+        // isFile && ！isSymbolicLink
+        fs.statSync(app.path).isFile() && !fs.lstatSync(app.path).isSymbolicLink() ?
+            // Map单个文件
+            files = files.concat([{
+                src: [app.name],
+                dest: path.join(widget, app.name)
+            }]):
+            // Map整个目录下的所有文件
+            files = files.concat(globule.findMapping({
+                src: `${app.name}/**`,
+                destBase: widget,
+                filter: (filepath) => fs.statSync(filepath).isFile()
+            }));
+    });
+    // 复制到临时项目目录
+    return Promise.all(files.map((file) => {
         return new Promise(function(res, rej){
-            fs.copy(app.path, path.join(widget, app.name), function(err, msg){
+            fs.copy(file.src[0], file.dest, function(err, msg){
                 err ? rej(err) : res(msg)
             })
         })
@@ -52,21 +70,21 @@ function copyApp(apps){
 // 执行项目构建
 function compile(args){
     return new Promise(function(res, rej){
-        exec(`uz release ${mapArgs(args)} --root ${project.path}`, function(err, msg){
+        exec('uz release ' + mapArgs(args), function(err, msg){
             err ? rej(err) : res(msg)
-            console.log(msg)
-            if(!args.live && !args.watch){
+            // console.log(msg)
+            if(!args.live || !args.watch){
                 process.exit(1)
             }
         })
     })
     function mapArgs(args){
         var arr = [];
-        args.live ? arr.push('L') : arr;
         args.watch ? arr.push('w') : arr;
-        args.clean ? arr.push('c') : arr;
-        arr.length > 0 ? arr.unshift('-') : [];
-        return arr.join('');
+        args.live ? arr.push('L') : arr;
+        arr.push('r');
+        arr.unshift('-');
+        return arr.join('') + ' ' + project.path;
     }
 }
 
@@ -100,6 +118,7 @@ function getApp(commander){
         commander.args.forEach((arg) => {
             app = {};
             app.name = arg;
+            // 检查app路径
             if(app.name === '.'){
                 app.path = process.cwd();
                 app.name = path.basename(app.path);
@@ -108,8 +127,8 @@ function getApp(commander){
             else{
                 app.path = path.join(process.cwd(), app.name);
                 app.dirname = path.dirname(app.path);
-            }
-            apps.push(app)
+            };
+            apps.push(app);
         })
     }
     return apps;
@@ -141,10 +160,25 @@ function logDate(){
     return '[]'.split('').join(new Date(new Date().getTime() + 288e+5).toJSON().slice(5).split('T').join(' ').slice(6, 14))
 }
 
+// 标记符号链接的app
+function getSymlink(apps) {
+    return apps.map((app) => {
+        if(fs.lstatSync(app.path.replace(/\/$/g), '').isSymbolicLink()){
+            return app.path;
+        }
+    })
+}
+
 module.exports = function(commander){
-    var apps = getApp(commander);
-    var args = getArgs(commander);
-    var gaze = getGaze(apps);
+    var apps, args, gaze;
+
+    if(typeof commander.args[0] === 'object' || commander.args.length === 0){
+        return
+    }
+
+    apps = getApp(commander);
+    args = getArgs(commander);
+    gaze = getGaze(apps);
 
     // 创建临时项目路径
     fs.mkdirpSync(rcpath);
@@ -157,9 +191,9 @@ module.exports = function(commander){
         gaze.on('all', function(ev, filepath){
             var file = {
                 path: filepath,
-                name: path.join(app.name, path.basename(filepath))
+                name: path.relative(apps[0].dirname, filepath)
             };
-            copyApp(file);
+            copyApp([file]);
             console.log(color.gray(logDate()), file.name, color.green(ev));
         })
     }
