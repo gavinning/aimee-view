@@ -71,8 +71,15 @@ function copyApp(apps){
 function compile(args){
     return new Promise(function(res, rej){
         exec('uz release ' + mapArgs(args), function(err, msg){
-            err ? rej(err) : res(msg)
-            // console.log(msg)
+            if(err){
+                console.log(err)
+                rej(err);
+            }
+
+            // 打印构建日志
+            console.log(msg);
+            res(msg);
+
             if(!args.live || !args.watch){
                 process.exit(1)
             }
@@ -82,6 +89,7 @@ function compile(args){
         var arr = [];
         args.watch ? arr.push('w') : arr;
         args.live ? arr.push('L') : arr;
+        arr.push('c');
         arr.push('r');
         arr.unshift('-');
         return arr.join('') + ' ' + project.path;

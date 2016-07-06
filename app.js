@@ -2,6 +2,7 @@ var path = require('path');
 var fs = require('fs-extra');
 var is = require('aimee-is');
 var color = require('colorful');
+var aimee = require('aimee-cli');
 var commander = require('commander');
 var config = fs.readJsonSync(path.join(__dirname, './package.json'));
 
@@ -10,6 +11,17 @@ commander
     .option('-w, --watch', 'monitor the changes of app')
     .option('-o, --open', 'open server url')
     .option('-L, --live', 'automatically reload your browser')
+
+commander
+    .command('init')
+    .description('init temp project')
+    .action(function(){
+        aimee.cli.create.project('www', path.join(process.env.HOME, '.aimee-view'), true, (err, msg) => {
+            err ?
+                console.log(err):
+                console.log(color.cyan('project create success'));
+        });
+    })
 
 commander
     .command('clean')
