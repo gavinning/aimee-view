@@ -5,6 +5,7 @@ var color = require('colorful');
 var aimee = require('aimee-cli');
 var Gaze = require('gaze').Gaze;
 var exec = require('child_process').exec;
+var spawn = require('child_process').spawn;
 var project = { name: 'www' };
 var rcpath = path.join(process.env.HOME, '.aimee-view');
 var widget = path.join(rcpath, project.name, 'src/widget');
@@ -69,30 +70,25 @@ function copyApp(apps){
 
 // 执行项目构建
 function compile(args){
-    return new Promise(function(res, rej){
-        exec('uz release ' + mapArgs(args), function(err, msg){
-            if(err){
-                console.log(err)
-                rej(err);
-            }
+    var uz = spawn('uz', ['release', make(args), '-r', project.path]);
 
-            // 打印构建日志
-            console.log(msg);
-            res(msg);
-
-            if(!args.live || !args.watch){
-                process.exit(1)
-            }
-        })
+    uz.stdout.on('data', (d) => {
+        process.stderr.write(d.toString());
     })
-    function mapArgs(args){
+
+    uz.on('exit', () => {
+        if(!args.live || !args.watch){
+            process.exit(1)
+        }
+    })
+
+    function make(args){
         var arr = [];
         args.watch ? arr.push('w') : arr;
         args.live ? arr.push('L') : arr;
-        arr.push('c');
-        arr.push('r');
-        arr.unshift('-');
-        return arr.join('') + ' ' + project.path;
+        args.clear ? arr.push('c') : arr;
+        arr.length > 0 ? arr.unshift('-') : arr;
+        return arr.join('');
     }
 }
 
@@ -112,9 +108,9 @@ function all(apps, args){
         .then(fixPage(apps))
         .then(copyApp(apps))
         .then(compile(args))
-        .catch(function(){
-            console.log(arguments, 'aimeeview|view|58')
-        })
+        // .catch(function(){
+        //     console.log(arguments, 'aimeeview|view|58')
+        // })
 }
 
 // 获取app相关信息
@@ -148,7 +144,7 @@ function getArgs(commander){
         open: commander.open || false,
         live: commander.live || false,
         watch: commander.watch || false,
-        clean: commander.clean || false
+        clear: commander.clear || false
     }
 }
 
@@ -202,7 +198,8 @@ module.exports = function(commander){
                 name: path.relative(apps[0].dirname, filepath)
             };
             copyApp([file]);
-            console.log(color.gray(logDate()), file.name, color.green(ev));
+            // console.log(color.gray(logDate()), file.name, color.green(ev));
+            console.log(file.name, color.green(ev));
         })
     }
     else{
