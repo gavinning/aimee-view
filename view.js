@@ -197,8 +197,7 @@ module.exports = function(commander){
                 path: filepath,
                 name: path.relative(apps[0].dirname, filepath)
             };
-            copyApp([file]);
-            // console.log(color.gray(logDate()), file.name, color.green(ev));
+            ev === 'deleted' || copyApp([file]);
             console.log(file.name, color.green(ev));
         })
     }

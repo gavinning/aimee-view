@@ -1,6 +1,6 @@
 {
   "name": "aimee-view",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "预览aimee.app，帮助快速创建aimee.app",
   "main": "app.js",
   "bin": {
