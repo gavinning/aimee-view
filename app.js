@@ -3,7 +3,8 @@ var fs = require('fs-extra');
 var is = require('aimee-is');
 var color = require('colorful');
 var aimee = require('aimee-cli');
-var commander = require('commander');
+var Command = require('commander').Command;
+var commander = new Command;;
 var config = fs.readJsonSync(path.join(__dirname, './package.json'));
 
 commander
