@@ -52,8 +52,7 @@ function copyApp(apps){
                 dest: path.join(widget, app.name)
             }]):
             // Map整个目录下的所有文件
-            files = files.concat(globule.findMapping({
-                src: `${app.name}/**`,
+            files = files.concat(globule.findMapping(`${app.name}/**`, {
                 destBase: widget,
                 filter: (filepath) => fs.statSync(filepath).isFile()
             }));
